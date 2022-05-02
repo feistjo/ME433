@@ -2,6 +2,7 @@
 // The functions must be called in the correct order as per the I2C protocol
 // I2C pins need pull-up resistors, 2k-10k
 #include "i2c_master_noint.h"
+#include<xc.h>           // processor SFR definitions
 
 void i2c_master_setup(void) {
     // using a large BRG to see it on the nScope, make it smaller after verifying that code works
@@ -38,8 +39,9 @@ void i2c_master_send(unsigned char byte) { // send a byte to slave
 unsigned char i2c_master_recv(void) { // receive a byte from the slave
     I2C1CONbits.RCEN = 1; // start receiving data
     while (!I2C1STATbits.RBF) {
-        ;
+        LATAbits.LATA4 = 1;
     } // wait to receive the data
+    LATAbits.LATA4 = 0;
     return I2C1RCV; // read and return the data
 }
 

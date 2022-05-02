@@ -130,19 +130,30 @@ float conv_temp(uint8_t * data) { // convert int16_t temperature signed short to
     return (get_temp(data)/340.00) + 36.53;
 }
 
+// Write a character array using UART1
+void WriteUART1(const char * string);
+
 // i2c functions
 // read one byte from a register (reg_addr) of a device (dev_addr):
 uint8_t read_byte_I2C1(uint8_t dev_addr,
                        uint8_t reg_addr) {
     uint8_t answer;
     i2c_master_start();
+    //WriteUART1("Started\n");
     i2c_master_send(dev_addr << 1); // hardware address and write bit
+    //WriteUART1("Sent1\n");
     i2c_master_send(reg_addr);  // WHO_AM_I register: 0x0F
+    //WriteUART1("Sent2\n");
     i2c_master_restart(); // this line is REALLY important!
+    //WriteUART1("Restarted\n");
     i2c_master_send((dev_addr << 1) | 1); // hardware address and read bit
+    //WriteUART1("Sent3\n");
     answer = i2c_master_recv(); // receive a byte from the slave. Should be 0x69 = 105d
+    //WriteUART1("Received\n");
     i2c_master_ack(1); // send NACK to slave
+    //WriteUART1("Ack'd\n");
     i2c_master_stop();
+    //WriteUART1("Stopped\n");
     return answer;
 }
 

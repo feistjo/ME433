@@ -2,6 +2,7 @@
 #include<sys/attribs.h>  // __ISR macro
 
 #include <stdio.h>
+#include <math.h>
 
 #include "i2c_master_noint.h"
 #include "mpu6050.h"
@@ -71,9 +72,12 @@ int main() {
     TRISBbits.TRISB4 = 1;
     
     U1RXRbits.U1RXR = 0b0000; // Set A2 to U1RX
-    RPB3Rbits.RPB3R = 0b0001; // Set B3 to U1TX
+    //RPB3Rbits.RPB3R = 0b0001; // Set B3 to U1TX
+    RPB15Rbits.RPB15R = 0b0001; //B15 -> U1TX
+    //U1RXRbits.U1RXR = 0b0011; //B13 -> U1RX
     
     UART1_Startup();
+    WriteUART1("Booted\n");
     
     __builtin_enable_interrupts();
     
@@ -84,16 +88,20 @@ int main() {
     char m_out[200]; // char array for uart data going out
     int i;
     #define NUM_DATA_PNTS 300 // how many data points to collect at 100Hz
-    float ax[NUM_DATA_PNTS], ay[NUM_DATA_PNTS], az[NUM_DATA_PNTS], gx[NUM_DATA_PNTS], gy[NUM_DATA_PNTS], gz[NUM_DATA_PNTS], temp[NUM_DATA_PNTS];
+    float ax[NUM_DATA_PNTS], ay[NUM_DATA_PNTS], az[NUM_DATA_PNTS], gx[NUM_DATA_PNTS], gy[NUM_DATA_PNTS], gz[NUM_DATA_PNTS], cf[NUM_DATA_PNTS], temp[NUM_DATA_PNTS];
     
     //sprintf(m_out,"MPU-6050 WHO_AM_I: %X\r\n",whoami());
     //WriteUART1(m_out);
     char who = whoami(); // ask if the imu is there
+    //WriteUART1("Who?\n");
     if (who != 0x68){
         // if the imu is not there, get stuck here forever
+        WriteUART1("no imu");
         while(1){
             LATAbits.LATA4 = 1;
         }
+    } else {
+        //WriteUART1("I am\n");
     }
     
     char IMU_buf[IMU_ARRAY_LEN]; // raw 8 bit array for imu data
@@ -102,6 +110,7 @@ int main() {
         blink();
         
         ReadUART1(m_in,100); // wait for a newline
+        WriteUART1(m_in);
         // don't actually have to use what is in m
         
         // collect data
@@ -115,6 +124,7 @@ int main() {
             gx[i] = conv_xG(IMU_buf);
             gy[i] = conv_yG(IMU_buf);
             gz[i] = conv_zG(IMU_buf);
+            cf[i] = comp_filt(IMU_buf, i==0?atan2f(ax[i], az[i]):cf[i-1], 0.01);
             temp[i] = conv_temp(IMU_buf);
             
             while(_CP0_GET_COUNT()<24000000/2/100){}
@@ -122,7 +132,7 @@ int main() {
         
         // print data
         for (i=0; i<NUM_DATA_PNTS; i++){
-            sprintf(m_out,"%d %f %f %f %f %f %f %f\r\n",NUM_DATA_PNTS-i,ax[i],ay[i],az[i],gx[i],gy[i],gz[i],temp[i]);
+            sprintf(m_out,"%d %f %f %f %f %f %f %f %f\r\n",NUM_DATA_PNTS-i,ax[i],ay[i],az[i],gx[i],gy[i],gz[i],cf[i],temp[i]);
             WriteUART1(m_out);
         }
         
@@ -135,9 +145,11 @@ int main() {
 void ReadUART1(char * message, int maxLength) {
   char data = 0;
   int complete = 0, num_bytes = 0;
+  //WriteUART1("ReadUART1: waiting for input");
   // loop until you get a '\r' or '\n'
   while (!complete) {
     if (U1STAbits.URXDA) { // if data is available
+      //  WriteUART1("Input rec'd");
       data = U1RXREG;      // read the data
       if ((data == '\n') || (data == '\r')) {
         complete = 1;
