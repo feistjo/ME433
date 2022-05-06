@@ -76,11 +76,13 @@ int main() {
     UART1_Startup();
     WriteUART1("Booted\n");
     
-    wsColor c[5];
-    for (int i = 0; i < 5; i++) {
-        c[i].r = 0xFF;
-        c[i].g = 0xFF;
-        c[i].b = 0xFF;
+    ws2812b_setup();
+    
+    wsColor c[4];
+    for (int i = 0; i < 4; i++) {
+        c[i].r = 0x01;
+        c[i].g = 0x01;
+        c[i].b = 0x01;
     }
     
     __builtin_enable_interrupts();
@@ -92,8 +94,25 @@ int main() {
             LATAbits.LATA4 = !LATAbits.LATA4; //A4 switch on/off
             _CP0_SET_COUNT(0);
         }
+        float hue = (float)_CP0_GET_COUNT() * (float)360 / (float)24000000;
+        c[0] = HSBtoRGB(hue, 1, 0.01);
+        hue += (360/4);
+        if (hue > 360) {
+            hue -= 360;
+        }
+        c[1] = HSBtoRGB(hue, 1, 0.01);
+        hue += (360/4);
+        if (hue > 360) {
+            hue -= 360;
+        }
+        c[2] = HSBtoRGB(hue, 1, 0.01);
+        hue += (360/4);
+        if (hue > 360) {
+            hue -= 360;
+        }
+        c[3] = HSBtoRGB(hue, 1, 0.01);
         
-        ws2812b_setColor(&c, 5);
+        ws2812b_setColor(c, 4);
     }
 }
 

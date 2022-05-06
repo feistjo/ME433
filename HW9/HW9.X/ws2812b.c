@@ -6,24 +6,26 @@
 // Timer2 delay times, you can tune these if necessary
 #define LOWTIME 15 // number of 48MHz cycles to be low for 0.35uS
 #define HIGHTIME 65 // number of 48MHz cycles to be high for 1.65uS
-
+void WriteUART1(const char * string);
 // setup Timer2 for 48MHz, and setup the output pin
 void ws2812b_setup() {
-    T2CONbits.TCKPS = 1; // Timer2 prescaler N=1 (1:1)
+    T2CONbits.TCKPS = 0; // Timer2 prescaler N=1 (1:1)
     PR2 = 65535; // maximum period
     TMR2 = 0; // initialize Timer2 to 0
     T2CONbits.ON = 1; // turn on Timer2
 
     // initialize output pin as off
     // TRIS...
+    TRISBbits.TRISB6 = 0;
     // LAT...
+    LATBbits.LATB6 = 0;
 }
 
 // build an array of high/low times from the color input array, then output the high/low bits
 void ws2812b_setColor(wsColor * c, int numLEDs) {
     int i = 0; int j = 0; // for loops
     int numBits = 2 * 3 * 8 * numLEDs; // the number of high/low bits to store, 2 per color bit
-    volatile unsigned int delay_times[2*3*8 * numLEDs]; // I only gave you 5 WS2812B, adjust this if you get more somewhere
+    volatile unsigned int delay_times[2*3*8 * 5]; // I only gave you 5 WS2812B, adjust this if you get more somewhere
 
     // start at time at 0
     delay_times[0] = 0;
@@ -37,7 +39,7 @@ void ws2812b_setColor(wsColor * c, int numLEDs) {
             // loop through each color bit, MSB first
             for (j = 7; j >= 0; j--) {
                 // if the bit is a 1
-                if ((((char*)(c[i]))[k] >> j) && 0b00000001) {
+                if (((k==0?c[i].r:k==1?c[i].g:c[i].b) >> j) && 0b00000001) {
                     // the high is longer
                     delay_times[nB] = delay_times[nB - 1] + HIGHTIME;
                     nB++;
@@ -55,10 +57,11 @@ void ws2812b_setColor(wsColor * c, int numLEDs) {
             }
         }
     }
+    
 
+    TMR2 = 0; // start the timer
     // turn on the pin for the first high/low
     LATBbits.LATB6 = 1;
-    TMR2 = 0; // start the timer
     for (i = 1; i < numBits; i++) {
         while (TMR2 < delay_times[i]) {
         }
