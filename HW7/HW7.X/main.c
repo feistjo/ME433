@@ -81,6 +81,7 @@ int main() {
     
     __builtin_enable_interrupts();
     
+    
     // init the imu
     init_mpu6050();
     
@@ -110,7 +111,6 @@ int main() {
         blink();
         
         ReadUART1(m_in,100); // wait for a newline
-        WriteUART1(m_in);
         // don't actually have to use what is in m
         
         // collect data
